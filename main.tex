@@ -1,0 +1,698 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry} 
+\geometry{left=1.0cm, top=3.0 cm, right=1.2cm, bottom=1.2 cm, footskip=.5cm}
+\usepackage{amsmath,amsthm,amssymb,amsfonts, fancyhdr, color, comment, graphicx, environ}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage[shortlabels]{enumitem}
+\usepackage{indentfirst}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=blue,
+}
+
+\usepackage{xcolor}
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily,
+  showstringspaces=false,
+  commentstyle=\color{red},
+  keywordstyle=\color{blue}
+}
+ 
+\definecolor{commentext}{RGB}{0, 0, 102}
+\definecolor{score}{RGB}{153, 0, 0}
+
+
+\pagestyle{fancy}
+
+\newenvironment{que}
+    { \begin{mdframed}[backgroundcolor=green!20] \textbf{$\Delta$ Question} \\}
+    {  \end{mdframed}}
+
+\definecolor{bluekeywords}{rgb}{0.13,0.13,1}
+\definecolor{greencomments}{rgb}{0,0.5,0}
+\definecolor{turqusnumbers}{rgb}{0.17,0.57,0.69}
+\definecolor{redstrings}{rgb}{0.5,0,0}
+
+\lstdefinelanguage{sql}
+    {morekeywords={let, update, replace,find, show, use, create, cache, uncache, clear, table, lazy, import, as, options, header, path, inferschema, with, using, type, and, in, try, if, then, else, where,not, exist, case, size, having, avg, sum, max,min},
+    keywordstyle=\color{bluekeywords},
+    sensitive=false,
+    morecomment=[l][\color{greencomments}]{///},
+    morecomment=[l][\color{greencomments}]{//},
+    morecomment=[s][\color{greencomments}]{{(*}{*)}},
+    morestring=[b]",
+    stringstyle=\color{redstrings}
+    }
+
+\lstnewenvironment{code}
+  {
+    \lstset{
+        language=sql,
+        basicstyle=\ttfamily,
+        breaklines=true,
+        columns=fullflexible,
+        backgroundcolor = \color{orange!10}}
+  }
+  {
+  }
+    
+\usepackage{tikz}
+\usepackage{graphics}
+\usepackage{float}
+
+\renewcommand{\qed}{\quad\qedsymbol}
+\newcommand{\redp}[1]{\textcolor{red}{#1}}
+\newcommand{\bluep}[1]{\textcolor{blue}{#1}}
+
+% prevent line break in inline mode
+\binoppenalty=\maxdimen
+\relpenalty=\maxdimen
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Fill in the appropriate information below
+\lhead{Notes on Spark SQL}
+\rhead{ Sizhe Liu} 
+\chead{}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+\section{Introduction}
+\begin{que}
+Amdahl's Law
+\end{que}
+\begin{code}
+// the amount of acceleration we would see from parallelizing a task is a function of what portion of the task can be completed in parallel.
+\end{code}
+
+\begin{que}
+How to create a table using CSV files?
+\end{que}
+\begin{code}
+CREATE TABLE IF NOT EXISTS fireCalls
+USING csv
+OPTIONS (
+  header "true",
+  path "/mnt/davis/fire-calls/fire-calls-truncated-comma.csv",
+  inferSchema "true"
+)
+\end{code}
+\begin{que}
+How to select a column with spaces in its name?
+\end{que}
+\begin{code}
+//Use `xxxx sss`
+\end{code}
+\section{Spark Core Concepts}
+\begin{que}
+Basic construction of spark? And what is its local mode
+\end{que}
+\begin{code}
+//Spark is made of one driver and many executors.
+//In the local mode, the driver and executor are on the same physical machine.
+\end{code}
+\begin{que}
+What is the unit of parallelism within a Spark cluster
+\end{que}
+\begin{code}
+//it is called slot. A slot can be either a core or a thread in a core. It can be calculated as "machines*cores*threads".
+\end{code}
+\begin{que}
+What is the unit of parallelism for data?
+\end{que}
+\begin{code}
+//It is called partitions. Partitions are part of a large distributed dataset.
+\end{code}
+\begin{que}
+How to determine the number of partitions?
+\end{que}
+\begin{code}
+//size of dataset, underlying partitioning of data by some other feature, and cluster configurations 
+\end{code}
+\begin{que}
+what happens if I increase number of partitions arbitrarily?
+\end{que}
+\begin{code}
+It increases the cost of communications between different units.
+\end{code}
+\subsection{Caching}
+\begin{que}
+What would happen when you cache your data?
+\end{que}
+\begin{code}
+//Spark will load our data from online server onto the memory of our executors.
+CACHE TABLE XXX
+\end{code}
+\begin{que}
+How to check storage level information after each SQL command?
+\end{que}
+\begin{code}
+//Use the Spark UI by clicking the "view" option after each command.
+//In the storage tab, we can tell how the data is stored 
+\end{code}
+\begin{que}
+What does the storage level "Memory Deserialized 1x Replicated " mean
+\end{que}
+\begin{code}
+//The data is stored as deserialized data, which takes less time to make them paralleled. But it takes more space to store them than the serialized data.
+\end{code}
+\begin{que}
+What is Tungsten?
+\end{que}
+\begin{code}
+//Tungsten optimized the storage space for data.
+\end{code}
+\begin{que}
+How to uncache data? 
+\end{que}
+\begin{code}
+UNCACHE TABLE xxxx
+\end{code}
+\begin{que}
+What does "CACHE LAZY"do?
+\end{que}
+\begin{code}
+CACHE LAZY TABLE XXXX
+//It will only cache data as it is required/queried.
+//It will not materialize all the entries in the database until your query need to be performed all the entries.
+\end{code}
+\begin{code}
+//Make sure clear cache before close a section on spark
+CLEAR CACHE
+\end{code}
+
+\subsection{Shuffle Partitions}
+\begin{que}
+What is Narrow/Wide Transformation?
+\end{que}
+\begin{code}
+//Any transformation that can be done on each partition in parallel.
+//On the other hand, wide transformation requires information from other partitions
+//The number of post shuffle partitions is set to 200. But it can be changed.
+\end{code}
+\begin{que}
+What is shuffle read/write?
+\end{que}
+\begin{code}
+//With the shuffle write, they add up their count or they do their GROUP BY locally, write it out to their local disk, then they go ahead and read around those different files from the other executors. So that's what we have with the shuffle read.
+
+//by default in Spark, it uses 200 tasks for the shuffle read. So our resulting partition number is 200.
+\end{code}
+
+\begin{que}
+How to change the number of tasks used for shuffle read?
+\end{que}
+\begin{code}
+SET spark.sql.shuffle.partitions=x
+//For small dataset, use small x, use larger x for large dataset to speed up your queries.
+//Some number of shuffle partitions to try:8,64,100,400...
+\end{code}
+\subsection{Analyze Spark UI}
+\begin{que}
+What is A stage boundary?
+\end{que}
+\begin{code}
+//A stage boundary occurs when all of your slots are available units of processing have to sync up with each other. So Spark is also known as a bulk synchronous processing engine. 
+
+//For example, When we perform a count, each executor has to sum up their count locally. Only once all of them finish, then one slot is tasked with adding up all of the counts from the other executors. 
+\end{code}
+\textbf{When you use spark UI to analyze read and write, make sure each partition has relatively equal amount of date to work on.}
+\subsection{Broadcast Joins}
+In a standard join, ALL the data is shuffled.This can be really expensive.
+
+An alternate way of joining your data sets is doing something called a broadcast join. \textbf{If you have two datasets and one is significantly smaller than the other,
+instead of partitioning it up across your three workers, you instead broadcast an entire copy of that data set to every worker}. So you can do those joins locally.
+So this will be a lot more efficient. 
+\subsubsection{Automatic and Manual broadcasting}
+Depending on size of the data that is being loaded into Spark, Spark uses internal heuristics to decide how to join that data to other data.
+\begin{itemize}
+    \item Automatic broadcast depends on "spark.sql.autoBroadcastJoinThreshold" The setting configures the maximum size in bytes for a table that will be broadcast to all worker nodes when performing a join. Default is 10MB
+    \item A broadcast function can be used in Spark to instruct Catalyst that it should probably broadcast one of the tables that is being joined.
+    \item If the broadcast hint isn't used, but one side of the join is small enough (i.e., its size is below the threshold), that data source will be read into the Driver and broadcast to all Executors.
+\end{itemize}
+\begin{que}
+How to check the autoBroadcastJoinThreshold?
+\end{que}
+\begin{code}
+//Use Python:
+%python
+spark.conf.get("spark.sql.autoBroadcastJoinThreshold")
+\end{code}
+\begin{que}
+How to broadJoin manually?
+\end{que}
+\begin{code}
+EXPLAIN 
+  SELECT /*+ BROADCAST(db1) */ * 
+  FROM db1
+  JOIN db2 on db1s.`xxx` = db2.`xxx`
+//The result shows the physical plan
+== Physical Plan ==
+*(2) BroadcastHashJoin [Call Number#3109], [Call_Number#3038],
+\end{code}
+
+\section{Engineering Data Pipelines}
+\begin{figure}[H]
+\tikzset{every picture/.style={line width=0.75pt}} %set default line width to 0.75pt        
+
+\begin{tikzpicture}[x=0.75pt,y=0.75pt,yscale=-1,xscale=1]
+%uncomment if require: \path (0,300); %set diagram left start at 0, and has height of 300
+
+%Right Arrow [id:dp9555938802672868] 
+\draw  [fill={rgb, 255:red, 80; green, 227; blue, 194 }  ,fill opacity=1 ] (87,113) -- (141,113) -- (141,103) -- (177,123) -- (141,143) -- (141,133) -- (87,133) -- cycle ;
+%Rounded Rect [id:dp8558780859560713] 
+\draw   (177,109) .. controls (177,104.58) and (180.58,101) .. (185,101) -- (239,101) .. controls (243.42,101) and (247,104.58) .. (247,109) -- (247,133) .. controls (247,137.42) and (243.42,141) .. (239,141) -- (185,141) .. controls (180.58,141) and (177,137.42) .. (177,133) -- cycle ;
+%Shape: Can [id:dp0011089210448078646] 
+\draw  [fill={rgb, 255:red, 128; green, 164; blue, 243 }  ,fill opacity=1 ] (386,92) -- (386,144) .. controls (386,148.97) and (372.57,153) .. (356,153) .. controls (339.43,153) and (326,148.97) .. (326,144) -- (326,92)(386,92) .. controls (386,96.97) and (372.57,101) .. (356,101) .. controls (339.43,101) and (326,96.97) .. (326,92) .. controls (326,87.03) and (339.43,83) .. (356,83) .. controls (372.57,83) and (386,87.03) .. (386,92) -- cycle ;
+%Bend Arrow [id:dp436205159428796] 
+\draw  [fill={rgb, 255:red, 248; green, 231; blue, 28 }  ,fill opacity=1 ] (207,101) -- (207,57.11) .. controls (207,47.77) and (214.57,40.2) .. (223.91,40.2) -- (235.18,40.2) -- (235.18,34) -- (269,49.5) -- (235.18,65) -- (235.18,58.8) -- (225.6,58.8) .. controls (225.6,58.8) and (225.6,58.8) .. (225.6,58.8) -- (225.6,101) -- cycle ;
+%Right Arrow [id:dp4857061873384123] 
+\draw  [fill={rgb, 255:red, 80; green, 227; blue, 194 }  ,fill opacity=1 ] (247,108.25) -- (294.4,108.25) -- (294.4,98) -- (326,118.5) -- (294.4,139) -- (294.4,128.75) -- (247,128.75) -- cycle ;
+%Rounded Rect [id:dp8624642378417351] 
+\draw   (285,189) .. controls (285,184.58) and (288.58,181) .. (293,181) -- (381,181) .. controls (385.42,181) and (389,184.58) .. (389,189) -- (389,213) .. controls (389,217.42) and (385.42,221) .. (381,221) -- (293,221) .. controls (288.58,221) and (285,217.42) .. (285,213) -- cycle ;
+%Rounded Rect [id:dp8506710547539996] 
+\draw  [fill={rgb, 255:red, 184; green, 233; blue, 134 }  ,fill opacity=1 ] (143,242.6) .. controls (143,236.75) and (147.75,232) .. (153.6,232) -- (232.4,232) .. controls (238.25,232) and (243,236.75) .. (243,242.6) -- (243,274.4) .. controls (243,280.25) and (238.25,285) .. (232.4,285) -- (153.6,285) .. controls (147.75,285) and (143,280.25) .. (143,274.4) -- cycle ;
+%Right Arrow [id:dp7566697228299772] 
+\draw  [fill={rgb, 255:red, 80; green, 227; blue, 194 }  ,fill opacity=1 ] (389,189) -- (431,189) -- (431,179) -- (459,199) -- (431,219) -- (431,209) -- (389,209) -- cycle ;
+%Bend Arrow [id:dp0747276731210843] 
+\draw  [fill={rgb, 255:red, 80; green, 227; blue, 194 }  ,fill opacity=1 ] (217.72,142.21) -- (218.81,187.9) .. controls (219.07,198.92) and (228.22,207.63) .. (239.23,207.37) -- (252.53,207.05) -- (252.69,213.96) -- (285.58,198.16) -- (251.98,183.96) -- (252.14,190.87) -- (238.84,191.19) .. controls (236.77,191.24) and (235.04,189.59) .. (234.99,187.51) -- (233.9,141.83) -- cycle ;
+%Up Down Arrow [id:dp8989484276916659] 
+\draw  [fill={rgb, 255:red, 248; green, 231; blue, 28 }  ,fill opacity=1 ] (170.81,162.25) -- (191.9,140) -- (213,162.25) -- (198.53,162.25) -- (198.53,206.75) -- (213,206.75) -- (191.9,229) -- (170.81,206.75) -- (185.27,206.75) -- (185.27,162.25) -- cycle ;
+%Shape: Rectangle [id:dp42964063741438685] 
+\draw  [fill={rgb, 255:red, 80; green, 227; blue, 194 }  ,fill opacity=1 ] (484,28) -- (501,28) -- (501,44) -- (484,44) -- cycle ;
+%Shape: Rectangle [id:dp06977245334910565] 
+\draw  [fill={rgb, 255:red, 248; green, 231; blue, 28 }  ,fill opacity=1 ] (484,54) -- (501,54) -- (501,70) -- (484,70) -- cycle ;
+
+% Text Node
+\draw (113,22) node [scale=1.44]  {$Big\ data\ archietecture$};
+% Text Node
+\draw  [fill={rgb, 255:red, 238; green, 134; blue, 134 }  ,fill opacity=1 ]  (10.5,106.5) -- (81.5,106.5) -- (81.5,139.5) -- (10.5,139.5) -- cycle  ;
+\draw (46,123) node [scale=1.44]  {$Kafka$};
+% Text Node
+\draw (212,121) node  [align=left] {{\Large ETL}};
+% Text Node
+\draw  [fill={rgb, 255:red, 238; green, 205; blue, 205 }  ,fill opacity=1 ]  (269,32.5) -- (415,32.5) -- (415,65.5) -- (269,65.5) -- cycle  ;
+\draw (342,49) node [scale=1.44]  {$ad\ hoc\ queries$};
+% Text Node
+\draw (436,127) node [scale=1.44] [align=left] {Database};
+% Text Node
+\draw (337,201) node [scale=1.44] [align=left] {Reporting};
+% Text Node
+\draw (193,257.5) node [scale=1.44] [align=left] {ML Model};
+% Text Node
+\draw (519,198) node [scale=1.44] [align=left] {Application};
+% Text Node
+\draw (573,34) node  [align=left] {Traditional streaming};
+% Text Node
+\draw (580,62) node  [align=left] {Other type processing};
+
+
+\end{tikzpicture}
+    \centering
+    \caption{Big Data Archietecture}
+    \label{fig:archietecture}
+\end{figure}
+\bluep{A data application needs a scalable way to receive high volume, velocity and variety of data}. This means that when data arrives in the system, it won't overload other aspects of our infrastructure. This piece of our infrastructure operates like a queue.
+The most common solution for this queue is the technology \textcolor{red}{Apache Kafka}, another open source project. 
+
+In the paradigm above, \bluep{producers of data published to topics.} Maybe those producers are a number of weather sensors that are all writing raw weather data to the same weather topic.
+There can be an arbitrary number of
+producers and an arbitrary number of topics. Consumers then read data
+from the topic in order to make use of it. \bluep{This makes sure that data can arrive in the system when we need it to, and when we need to take in
+different data we can just add more topics}. 
+
+\bluep{In ETL, we might take that raw weather data, pull out the fields we need and insert it into a database}.
+That database will then serve the data maybe to visitors of a website.
+We'd also want to store the raw data in case we ever need to return to it.
+This can be done using a data lake normally backed by a blob store such as Amazon S3 or the Azure Blob. 
+
+\bluep{Spark offers an optimized Compute Engine that connects the data where it lifts}.By spinning up a Spark cluster when it's needed, connecting to data where it lives and shutting it down afterwards, not only can you save resources but you don't have to worry about updating your cluster to the latest version of Spark.
+
+Generally speaking, data transfer is
+the bottleneck for most tasks in a big data environment. These \redp{IO bound problems }demand attention to how the data is stored and read into the cluster.
+
+Finally, there are number of different file types.Most of these cases you've seen in this series of courses have pertained to the domain of OLAP or \redp{Online Analytical Processing}.OLAP workloads focus on reporting and Ad hoc analysis
+or data exploration where an analyst is exploring the data that's available to him or her. \redp{OLTP is online transaction processing}. This involves some sort of transaction executed against a database. For instance, a visitor to a website might update their profile which would trigger a transaction made against the database. The main difference between OLAP and OLTP workloads is whether the work needs to occur in real time. While most of an analyst's responsibilities fall under the category of OLAP, work with Spark is used for OLTP as well.
+    
+\subsection{Accessing Data}
+BLOB stores are a common way of storing large amounts of data. \bluep{JDBC is an application programming interface or API for Java environments.} This allows us to query most databases. Spark works well with JDBC, including a functionality called predicate push down. We're aspects of SQL queries such as filter operations, can be done by the database itself transferring that data into the Spark cluster.
+\begin{que}
+How to mount data bucket from AWS?
+\end{que}
+\begin{code}
+//First, define the credentials:
+%python
+ACCESS_KEY = "AKIAJBRYNXGHORDHZB4A"
+# Encode the Secret Key to remove any "/" characters
+SECRET_KEY = "a0BzE1bSegfydr3%2FGE3LSPM6uIV5A4hOUfpH8aFF".replace("/", "%2F")
+AWS_BUCKET_NAME = "davis-dsv1071/data/"
+MOUNT_NAME = "/mnt/davis-tmp"
+
+//we then use the following command to mount the data in the workspace.
+%python
+try:
+  dbutils.fs.mount("s3a://{}:{}@{}".format(ACCESS_KEY, SECRET_KEY, AWS_BUCKET_NAME), MOUNT_NAME)
+except:
+  print("""{} already mounted. Unmount using `dbutils.fs.unmount("{}")` to unmount first""".format(MOUNT_NAME, MOUNT_NAME))
+\end{code}
+\redp{After a cell used to mount a bucket is run, you can access the data in this mount point in any notebook or any cluster in your service provider, and share the mount between colleagues.}
+\begin{que}
+How to get the name of mountpoint?
+\end{que}
+\begin{code}
+%fs mounts
+\end{code}
+\begin{que}
+How to unmount a mountpoint?
+\end{que}
+\begin{code}
+%python
+dbutils.fs.unmount("/mount/point/path")
+\end{code}
+\subsubsection{Serial JDBC Reads}
+To leverage the inherent efficiencies of database engines, Spark uses an optimization called \bluep{predicate push down. Predicate push down uses the database itself to handle certain parts of a query (the predicates)}. In mathematics and functional programming, a predicate is anything that returns a Boolean. In SQL terms, this often refers to the WHERE clause. 
+
+The following query creates a db called "twitterJDBC" from a table called "Account"
+\begin{code}
+CREATE TABLE IF NOT EXISTS twitterJDBC
+USING org.apache.spark.sql.jdbc
+OPTIONS (
+  driver "org.postgresql.Driver",
+  url "jdbc:postgresql://server1.databricks.training:5432/training",
+  user "readonly",
+  password "readonly",
+  dbtable "Account"
+)
+\end{code}
+
+Now, Add a subquery to dbtable, which pushes the predicate to JDBC to process before transferring the data to your Spark cluster.
+\begin{code}
+CREATE TABLE IF NOT EXISTS twitterPhilippinesJDBC
+USING org.apache.spark.sql.jdbc
+OPTIONS (
+  driver "org.postgresql.Driver",
+  url "jdbc:postgresql://server1.databricks.training:5432/training",
+  user "readonly",
+  password "readonly",
+  dbtable "(SELECT * FROM Account WHERE location = 'Philippines') as subq"
+)
+\end{code}
+
+\subsubsection{Parallel JDBC Reads}
+The following commands partition the column "userID" into 25 parts, and read data in a parallel manner.
+\begin{code}
+DROP TABLE IF EXISTS twitterParallelJDBC;
+
+CREATE TABLE IF NOT EXISTS twitterParallelJDBC
+USING org.apache.spark.sql.jdbc
+OPTIONS (
+  driver "org.postgresql.Driver",
+  url "jdbc:postgresql://server1.databricks.training:5432/training",
+  user "readonly",
+  password "readonly",
+  dbtable "Account",
+  partitionColumn '"userID"',
+  lowerBound 2591,
+  upperBound 951253910555168768,
+  numPartitions 25
+)
+\end{code}
+Note taht the lowerbound and upperbount of "userID" are also specified. \redp{Remember to use '"user ID"' to make accessing process case sensitive.}
+
+Now, the following time counting tells that the parralell reading is indeed faster:
+\begin{code}
+%python
+%timeit sql("SELECT * from twitterJDBC").describe()
+%python
+%timeit sql("SELECT * from twitterParallelJDBC").describe()
+\end{code}
+\subsection{File Formats}
+\redp{Parquet} format is a column-based format to store data, which has performance boosted when they are read on Spark. This is for a number of reasons. One is because it's able to compress our data so we have less data actually moving across the network. It also \redp{stores enough of the metadata so that we don't have to worry about the schema inference} which was part of the big cost associated with reading this data. 
+
+\subsection{Schemas and Types}
+\begin{que}
+How to create table using user-defined schema from JSON file?
+\end{que}
+\begin{code}
+CREATE OR REPLACE TEMPORARY VIEW fireCallsJSON ( 
+  `Call Number` INT,
+  `Unit ID` STRING,
+  `Incident Number` INT,
+  `Call Type` STRING,
+  `Call Date` STRING,
+  `Watch Date` STRING,
+  `Received DtTm` STRING,
+  `Entry DtTm` STRING,
+  `Dispatch DtTm` STRING,
+  `Response DtTm` STRING,
+  `On Scene DtTm` STRING,
+  `Transport DtTm` STRING,
+  `Hospital DtTm` STRING,
+  `Call Final Disposition` STRING,
+  `Available DtTm` STRING,
+  `Address` STRING,
+  `City` STRING,
+  `Zipcode of Incident` INT,
+  `Battalion` STRING,
+  `Station Area` STRING,
+  `Box` STRING,
+  `Original Priority` STRING,
+  `Priority` STRING,
+  `Final Priority` INT,
+  `ALS Unit` BOOLEAN,
+  `Call Type Group` STRING,
+  `Number of Alarms` INT,
+  `Unit Type` STRING,
+  `Unit sequence in call dispatch` INT,
+  `Fire Prevention District` STRING,
+  `Supervisor District` STRING,
+  `Neighborhooods - Analysis Boundaries` STRING,
+  `Location` STRING,
+  `RowID` STRING
+)
+USING JSON 
+OPTIONS (
+    path "/mnt/davis/fire-calls/fire-calls-truncated.json"
+)
+//Notice that by using user-defined schema, we can build table faster.
+\end{code}
+
+\subsection{Writing data}
+\redp{Two core concepts are:} \bluep{A partition is a portion of your total data set, which is divided into many of these portions so Spark can distribute your work across a cluster.}
+
+The other concept needed to understand Spark's computation is a slot (also known as a core). \bluep{A slot/core is a resource available for the execution of computation in parallel}. \textbf{In brief, a partition refers to the distribution of data while a slot refers to the distribution of computation.}
+\begin{que}
+How to write dataframe in Python?
+\end{que}
+\begin{code}
+%python
+df.write.mode("OVERWRITE").csv(username + "/filename.csv")
+\end{code}
+\begin{que}
+Check the file you already write?
+\end{que}
+\begin{code}
+%python
+dbutils.fs.ls(username + "/filename.csv")
+//It can be seen that the data is stored in different parts, one for each partition.
+\end{code}
+\begin{que}
+How to check the number of partitions you just write?
+\end{que}
+\begin{code}
+//In python
+%python
+df.rdd.getNumPartitions()
+\end{code}
+\subsubsection{Change number of partitions when write data}
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|l|l|}
+\hline
+Hint & Transformation type & Use & Evenly distributes data across partitions? \\ \hline
+SELECT /*+ COALESCE(n) */ & narrow (does not shuffle data) & reduce the number of partitions & No \\ \hline
+SELECT /*+ REPARTITION(n) */ & wide (includes a shuffle operation) & increase the number of partitions & Yes \\ \hline
+\end{tabular}%
+}
+\caption{Controlling concurrency}
+\label{tab:my-table}
+\end{table}
+\begin{que}
+Examples of using REPARTITION/COALESCE?
+\end{que}
+\begin{code}
+CREATE OR REPLACE TEMPORARY VIEW fireCallsCSV1p
+  AS
+SELECT /*+ COALESCE(1) */ * 
+FROM fireCallsCSV
+//If we run sql("SELECT * FROM fireCallsCSV8p").rdd.getNumPartitions(), the result should be 1
+
+CREATE OR REPLACE TEMPORARY VIEW fireCallsCSV8p
+  AS
+SELECT /*+ REPARTITION(12) */ * 
+FROM fireCallsCSV
+
+//If we run sql("SELECT * FROM fireCallsCSV8p").rdd.getNumPartitions(), the result should be 12
+\end{code}
+
+\subsection{Managed and Unmanaged(external) Table}
+Data on the Spark cluster
+disappears when the cluster is terminated, unless it saved elsewhere.
+
+Managed table manages metadata and tables, \bluep{if we drop that table, we'll remove both the metadata for the table as well as the data itself.}
+
+Unmanaged tables perform a little bit differently.
+\bluep{Unmanaged tables manage the metadata, but the data itself is sitting in a different location}, often backed by blob stores like the Azure Blob or S3. In this case, Spark is not going to delete that table when we perform a drop table operation.
+
+\begin{que}
+How to create managed/unmanaged table?
+\end{que}
+\begin{code}
+USE default;
+
+CREATE TABLE IF NOT EXISTS tableManaged (
+  var1 INT,
+  var2 INT
+);
+
+INSERT INTO tableManaged
+  VALUES (1, 1), (2, 2)
+  
+//Now, if we run the following command:
+DESCRIBE EXTENDED tableManaged
+//we found that the location of the table is: dbfs:/user/hive/warehouse/tablemanaged, and its type is "EXTERNAL".
+
+//Now, we create an unmanaged table:
+CREATE EXTERNAL TABLE IF NOT EXISTS tableUnmanaged (
+  var1 INT,
+  var2 INT
+)
+LOCATION '/tmp/unmanagedTable'
+\end{code}
+\bluep{If we drop managed table by using "DROP TABLE", we can no longer access the information of the table. On the other hand, the data from unmanagedtable will still be in the warehouse.}
+
+\section{Machine Learning Applications of Spark}
+\begin{code}
+//Objectives: Preprocess data for use in a machine learning model
+//Step through creating a sklearn logistic regression model for classification
+//Predict the Call Type Group for incidents in a SQL table
+
+//Load the mnt/davis/fire-calls/fire-calls-clean.parquet data as fireCallsClean table.
+USE DATABRICKS;
+CREATE TABLE IF NOT EXISTS fireCallsClean
+USING parquet
+OPTIONS (
+  path "mnt/davis/fire-calls/fire-calls-clean.parquett"
+)
+//How many calls of Call_Type_Group "Fire"?
+SELECT COUNT(`Call_Type_Group`) AS Group_Count, `Call_Type_Group`
+FROM fireCallsClean
+GROUP BY `Call_Type_Group`
+ORDER BY Group_Count DESC
+
+//Let's drop all the rows where Call_Type_Group = null. Since we don't have a lot of Call_Type_Group with the value Alarm and Fire, we will also drop these calls from the table. Call this new table fireCallsGroupCleaned.
+
+CREATE TABLE IF NOT EXISTS fireCallsGroupCleaned AS (
+  SELECT *
+  FROM fireCallsClean
+  WHERE `Call_Type_Group` IN ("Potentially Life-Threatening", "Non Life-threatening")
+)
+
+//We probably don't need all the columns of fireCallsGroupCleaned to make our prediction. Select the following columns from fireCallsGroupCleaned and create a view called fireCallsDF so we can access this table in Python
+
+DROP VIEW IF EXISTS fireCallsDF;
+CREATE OR REPLACE TEMPORARY VIEW fireCallsDF AS (
+SELECT `Call_Type`,`Fire_Prevention_District`, `Neighborhooods_-_Analysis_Boundaries`,`Number_of_Alarms`,`Original_Priority`,
+`Unit_Type`,`Battalion`, `Call_Type_Group`
+FROM fireCallsGroupCleaned
+)
+
+//Fill in the string SQL statement to load the fireCallsDF table you just created into python.
+
+%python
+# # TODO
+df = sql("""SELECT * FROM fireCallsDF""")
+display(df)
+
+//Creating a Logistic Regression Model in Sklearn
+%python
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+
+pdDF = df.toPandas()
+le = LabelEncoder()
+numerical_pdDF = pdDF.apply(le.fit_transform)
+
+X = numerical_pdDF.drop("Call_Type_Group", axis=1)
+y = numerical_pdDF["Call_Type_Group"].values
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+%python
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.pipeline import Pipeline
+
+
+ohe = ("ohe", OneHotEncoder(handle_unknown="ignore"))
+lr = ("lr", LogisticRegression())
+
+pipeline = Pipeline(steps = [ohe, lr]).fit(X_train, y_train)
+y_pred = pipeline.predict(X_test)
+
+%python
+from sklearn.metrics import accuracy_score
+print(f"Accuracy of model: {accuracy_score(y_pred, y_test)}")
+%python
+import mlflow
+from mlflow.sklearn import save_model
+
+model_path = "/dbfs/" + username + "/Call_Type_Group_lr"
+dbutils.fs.rm(username + "/Call_Type_Group_lr", recurse=True)
+save_model(pipeline, model_path)
+
+//Now that we have created and trained a machine learning pipeline, we will use MLflow to register the .predict function of the sklearn pipeline as a UDF which we can use later to apply in parallel. Now we can refer to this with the name predictUDF in SQL.
+
+%python
+import mlflow
+from mlflow.pyfunc import spark_udf
+
+predict = spark_udf(spark, model_path, result_type="int")
+spark.udf.register("predictUDF", predict)
+
+//Create a view called testTable of our test data X_test so that we can see this table in SQL.
+
+%python
+X_test.to_csv("/dbfs/" + username + "/Call_Type_Group_lr"+ "/modeltest.csv")
+dbutils.fs.ls("/liu_si_zhe@outlook.com/Call_Type_Group_lr/")
+
+CREATE OR REPLACE TEMPORARY VIEW testTable
+USING csv
+OPTIONS (
+  header "true",
+  path "/liu_si_zhe@outlook.com/Call_Type_Group_lr/modeltest.csv",
+  inferSchema "true"
+)
+
+//Create a table called predictions using the predictUDF function we registered beforehand. Apply the predictUDF to every row of testTable in parallel so that each row of testTable has a Call_Type_Group prediction.
+
+USE DATABRICKS;
+DROP TABLE IF EXISTS predictions;
+
+CREATE TEMPORARY VIEW predictions AS (
+  SELECT cast(predictUDF(Call_Type,Fire_Prevention_District, `Neighborhooods_-_Analysis_Boundaries`,Number_of_Alarms,Original_Priority,
+  Unit_Type,Battalion) as double) as Call_Type_Group, *
+  FROM testTable
+)
+\end{code}
+   
+
+\section{Useful link at Databricks}
+\hyperlink{https://docs.azuredatabricks.net/dev-tools/databricks-utils.html}{Utilities}
+
+\hyperlink{https://kb.azuredatabricks.net/python/index.html}{Python with Spark}
+
+\end{document}
