@@ -63,7 +63,10 @@
 \usepackage{tikz}
 \usepackage{graphics}
 \usepackage{float}
+\usepackage{titling}
 
+\renewcommand\maketitlehooka{\null\mbox{}\vfill}
+\renewcommand\maketitlehookd{\vfill\null}
 \renewcommand{\qed}{\quad\qedsymbol}
 \newcommand{\redp}[1]{\textcolor{red}{#1}}
 \newcommand{\bluep}[1]{\textcolor{blue}{#1}}
@@ -77,9 +80,19 @@
 \lhead{Notes on Spark SQL}
 \rhead{ Sizhe Liu} 
 \chead{}
+\title{Distributed Computing with Spark SQL}
+\author{Sizhe Liu}
+\date{Version 1.0}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}
+\begin{titlingpage}
+\maketitle
+\end{titlingpage}
+
+\newpage
+\tableofcontents
+\newpage
 \section{Introduction}
 \begin{que}
 Amdahl's Law
@@ -106,6 +119,7 @@ How to select a column with spaces in its name?
 \begin{code}
 //Use `xxxx sss`
 \end{code}
+
 \section{Spark Core Concepts}
 \begin{que}
 Basic construction of spark? And what is its local mode
@@ -689,7 +703,6 @@ CREATE TEMPORARY VIEW predictions AS (
 )
 \end{code}
    
-
 \section{Useful link at Databricks}
 \hyperlink{https://docs.azuredatabricks.net/dev-tools/databricks-utils.html}{Utilities}
 
